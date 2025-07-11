@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure AI チャットツール</title>
+    
+    <!-- htmx -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-robot"></i> Azure AI チャットツール</h1>
+            <p class="subtitle">AIアシスタントと対話しましょう</p>
+        </header>
+        
+        <main>
+            <div id="chat-container">
+                <div id="chat-messages">
+                    <div class="chat-message assistant-message">
+                        <div class="message-header">AI</div>
+                        <div class="message-content">
+                            こんにちは！私はAIアシスタントです。何かお手伝いできることはありますか？
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="typing-indicator" class="typing-indicator" style="display: none;">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            
+            <form id="chat-form" 
+                  hx-post="/chat"
+                  hx-target="#chat-messages"
+                  hx-swap="beforeend"
+                  hx-on::before-request="handleBeforeRequest()"
+                  hx-on::after-request="handleAfterRequest()">
+                
+                <div class="input-group">
+                    <input type="text" 
+                           name="message" 
+                           id="message-input"
+                           placeholder="メッセージを入力してください..." 
+                           required
+                           autocomplete="off">
+                    
+                    <input type="hidden" name="session_id" id="session-id" value="">
+                    
+                    <button type="submit" id="send-button">
+                        <i class="fas fa-paper-plane"></i> 送信
+                    </button>
+                </div>
+            </form>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-question-circle"></i>
+                    <span>FAQ対応</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-file-alt"></i>
+                    <span>ドキュメント問い合わせ</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-compress-alt"></i>
+                    <span>要約補助</span>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // メッセージ送信前の処理
+        function handleBeforeRequest() {
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const chatMessages = document.getElementById('chat-messages');
+            
+            // ユーザーメッセージを表示
+            const userMessage = messageInput.value;
+            const userMessageHtml = `
+                <div class="chat-message user-message">
+                    <div class="message-header">あなた</div>
+                    <div class="message-content">${escapeHtml(userMessage)}</div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', userMessageHtml);
+            
+            // 入力フィールドをクリア
+            messageInput.value = '';
+            
+            // ボタンを無効化
+            sendButton.disabled = true;
+            
+            // タイピングインジケーターを表示
+            typingIndicator.style.display = 'flex';
+            
+            // スクロールを最下部に
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // メッセージ送信後の処理
+        function handleAfterRequest() {
+            const sendButton = document.getElementById('send-button');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const chatMessages = document.getElementById('chat-messages');
+            const messageInput = document.getElementById('message-input');
+            
+            // ボタンを有効化
+            sendButton.disabled = false;
+            
+            // タイピングインジケーターを非表示
+            typingIndicator.style.display = 'none';
+            
+            // スクロールを最下部に
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // 入力フィールドにフォーカス
+            messageInput.focus();
+            
+            // セッションIDを更新
+            const sessionInput = chatMessages.querySelector('input[name="session_id"]');
+            if (sessionInput) {
+                document.getElementById('session-id').value = sessionInput.value;
+                sessionInput.remove();
+            }
+        }
+        
+        // HTMLエスケープ
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        // Enterキーで送信
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+            }
+        });
+        
+        // 初期フォーカス
+        document.getElementById('message-input').focus();
+    </script>
+</body>
+</html>
