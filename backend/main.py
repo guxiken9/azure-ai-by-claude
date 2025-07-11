@@ -31,10 +31,10 @@ app.add_middleware(
 )
 
 # 静的ファイルの設定
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
 
 # テンプレートの設定
-templates = Jinja2Templates(directory="frontend/templates")
+templates = Jinja2Templates(directory="../frontend/templates")
 
 # ルーターの登録
 app.include_router(chat_router)
