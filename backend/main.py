@@ -31,10 +31,19 @@ app.add_middleware(
 )
 
 # 静的ファイルの設定
-app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+import os
+from pathlib import Path
+
+# プロジェクトのルートディレクトリを取得
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 静的ファイルの設定
+static_dir = BASE_DIR / "frontend" / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 # テンプレートの設定
-templates = Jinja2Templates(directory="../frontend/templates")
+template_dir = BASE_DIR / "frontend" / "templates"
+templates = Jinja2Templates(directory=str(template_dir))
 
 # ルーターの登録
 app.include_router(chat_router)

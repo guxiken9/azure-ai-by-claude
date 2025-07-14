@@ -36,17 +36,32 @@ cd azure-ai-by-claude
 
 ### 2. uvのインストール（未インストールの場合）
 
+**macOS/Linux:**
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows:**
+```powershell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### 3. 仮想環境の作成と有効化
 
 ```bash
 uv venv
-source .venv/bin/activate  # macOS/Linux
-# または
-.venv\Scripts\activate  # Windows
+```
+
+**仮想環境の有効化:**
+
+macOS/Linux:
+```bash
+source .venv/bin/activate
+```
+
+Windows:
+```cmd
+.venv\Scripts\activate
 ```
 
 ### 4. 依存関係のインストール
@@ -183,6 +198,15 @@ pytest
 
 - ブラウザのCookieが有効になっているか確認してください
 - セッションタイムアウト（デフォルト30分）を超えていないか確認してください
+
+### Windows環境での注意事項
+
+- `uvloop`はWindows非対応のため、自動的に除外されます（`requirements.txt`の条件式により）
+- パスセパレータは自動的に処理されます（`pathlib`を使用）
+- PowerShellでuvをインストールする際は、実行ポリシーの設定が必要な場合があります：
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
 
 ## ライセンス
 
