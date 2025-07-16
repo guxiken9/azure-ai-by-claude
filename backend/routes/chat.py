@@ -7,6 +7,7 @@ import markdown
 
 from services.openai_service import AzureOpenAIService
 from services.session_service import session_service
+from services.vector_db_service import vector_db_service
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -49,8 +50,23 @@ async def chat(
         # 会話履歴を取得（最新の10メッセージ）
         messages = session_service.get_messages(session_id, limit=20)
         
-        # Azure OpenAI APIを呼び出し
-        ai_response = await openai_service.get_chat_response(messages)
+        # RAG検索を実行
+        search_results = await vector_db_service.search(message, n_results=3)
+        context = ""
+        sources = []
+        
+        if search_results:
+            # 検索結果からコンテキストを構築
+            context_parts = []
+            for result in search_results:
+                context_parts.append(result['content'])
+                source = result['metadata'].get('source', 'Unknown')
+                if source not in sources:
+                    sources.append(source)
+            context = "\n\n".join(context_parts)
+        
+        # Azure OpenAI APIを呼び出し（コンテキスト付き）
+        ai_response = await openai_service.get_chat_response(messages, context=context)
         
         # AIの応答をセッションに追加
         session_service.add_message(session_id, "assistant", ai_response)
@@ -63,6 +79,17 @@ async def chat(
         <div class="chat-message assistant-message">
             <div class="message-header">AI</div>
             <div class="message-content">{html_content}</div>
+        """
+        
+        # ソース情報を追加
+        if sources:
+            response_html += """
+            <div class="message-sources">
+                <small>参考資料: """
+            response_html += ", ".join(sources)
+            response_html += "</small></div>"
+        
+        response_html += f"""
         </div>
         <input type="hidden" name="session_id" value="{session_id}" />
         """
@@ -107,6 +134,21 @@ async def chat_stream(
         # 会話履歴を取得
         messages = session_service.get_messages(session_id, limit=20)
         
+        # RAG検索を実行
+        search_results = await vector_db_service.search(message, n_results=3)
+        context = ""
+        sources = []
+        
+        if search_results:
+            # 検索結果からコンテキストを構築
+            context_parts = []
+            for result in search_results:
+                context_parts.append(result['content'])
+                source = result['metadata'].get('source', 'Unknown')
+                if source not in sources:
+                    sources.append(source)
+            context = "\n\n".join(context_parts)
+        
         async def generate():
             """SSE形式でレスポンスを生成"""
             full_response = ""
@@ -115,8 +157,12 @@ async def chat_stream(
                 # 初期イベント：セッションIDを送信
                 yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
                 
-                # ストリーミングレスポンスを取得
-                async for chunk in openai_service.get_streaming_response(messages):
+                # ソース情報を送信
+                if sources:
+                    yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
+                
+                # ストリーミングレスポンスを取得（コンテキスト付き）
+                async for chunk in openai_service.get_streaming_response(messages, context=context):
                     full_response += chunk
                     # チャンクをSSE形式で送信
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"

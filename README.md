@@ -1,28 +1,45 @@
-# Azure AI チャットツール
+# Azure AI チャットツール with RAG
 
-Azure OpenAI Service を活用した社内向けAIチャットツールです。FAQ対応、ドキュメント問い合わせ、要約補助などの用途で従業員の生産性向上を支援します。
+Azure OpenAI Service を活用した社内向けAIチャットツールです。RAG（Retrieval-Augmented Generation）機能により、アップロードした文書に基づいた正確な回答を提供し、FAQ対応、ドキュメント問い合わせ、要約補助などの用途で従業員の生産性向上を支援します。
 
-## 機能
+## 🎯 主要機能
 
-- 🤖 Azure OpenAI (GPT-3.5/GPT-4) を使用したAIチャット
-- 💬 会話履歴の管理とコンテキスト保持
-- 🚀 htmxによるスムーズなユーザー体験
-- 📝 Markdown形式の応答対応
-- 🔒 セッション管理による個別の会話管理
-- 📱 レスポンシブデザイン
+### コア機能
+- 🤖 **AIチャット**: Azure OpenAI (GPT-3.5/GPT-4) を使用
+- 📚 **RAG機能**: アップロードした文書に基づく回答生成
+- 💬 **会話履歴管理**: コンテキスト保持によるスムーズな対話
+- 📝 **Markdown対応**: リッチな応答表示
 
-## 技術スタック
+### 文書管理機能
+- 📁 **ファイルアップロード**: PDF、TXT、MDファイル対応
+- 🔍 **ベクトル検索**: Azure OpenAI Embeddingsによる類似度検索
+- 📊 **文書管理**: アップロード済み文書の一覧表示・削除
+- 🎯 **ソース表示**: 回答の参考資料を自動表示
+
+### UI/UX機能
+- 🚀 **htmx**: スムーズなリアルタイム更新
+- 📱 **レスポンシブ**: モバイル対応デザイン
+- 🔒 **セッション管理**: 個別の会話管理
+- ⚡ **軽量実装**: 最小限の依存関係
+
+## 🛠️ 技術スタック
 
 - **バックエンド**: Python (FastAPI)
-- **フロントエンド**: HTML + htmx
-- **AI**: Azure OpenAI Service
+- **フロントエンド**: HTML + htmx + Jinja2
+- **AI/RAG**: 
+  - Azure OpenAI Service (GPT-3.5/GPT-4、Embeddings)
+  - 独自ベクトル検索エンジン（コサイン類似度）
+  - テキスト分割・チャンク処理
+- **文書処理**: PyPDF、標準ライブラリ
+- **データ保存**: JSON（軽量・永続化）
 - **スタイリング**: CSS3
 - **パッケージ管理**: uv
 
-## 前提条件
+## 📋 前提条件
 
 - Python 3.8以上
 - Azure OpenAI Service のアカウントとAPIキー
+- Azure OpenAI Embeddings デプロイメント（text-embedding-ada-002）
 - uv（Pythonパッケージマネージャー）
 
 ## インストール
@@ -79,10 +96,16 @@ cp .env.example .env
 `.env` ファイルを編集し、Azure OpenAI の認証情報を設定してください：
 
 ```env
+# Azure OpenAI 基本設定
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key
 AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT_NAME=gpt-35-turbo
 AZURE_OPENAI_API_VERSION=2024-02-01
+
+# RAG機能用（重要）
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=text-embedding-ada-002
+
+# セッション管理
 SESSION_SECRET_KEY=your-secret-key-here
 ```
 
@@ -97,14 +120,30 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 アプリケーションは http://localhost:8000 でアクセスできます。
 
-## 使い方
+## 📖 使い方
 
+### 基本的なチャット
 1. ブラウザで http://localhost:8000 を開きます
 2. テキストボックスにメッセージを入力します
 3. Enterキーまたは送信ボタンをクリックして送信します
 4. AIからの応答が表示されます
 
-## API仕様
+### RAG機能の使用
+1. **文書アップロード**:
+   - ヘッダーの「文書アップロード」ボタンをクリック
+   - PDF、TXT、MDファイルをドラッグ&ドロップまたは選択
+   - アップロード完了まで待機
+
+2. **文書ベースの質問**:
+   - アップロード後、通常通りにチャットで質問
+   - システムが自動的に関連文書を検索
+   - 回答に参考資料のソースが表示される
+
+3. **文書管理**:
+   - ヘッダーの「文書管理」ボタンで一覧表示
+   - 不要な文書は削除ボタンで削除可能
+
+## 🔌 API仕様
 
 ### チャットエンドポイント
 
@@ -115,7 +154,26 @@ Content-Type: application/x-www-form-urlencoded
 message=<user-message>&session_id=<session-id>
 ```
 
-レスポンス: HTMXで更新されるHTMLフラグメント
+レスポンス: HTMXで更新されるHTMLフラグメント（参考資料情報含む）
+
+### RAG文書管理API
+
+```http
+# 文書アップロード
+POST /api/documents/upload
+Content-Type: multipart/form-data
+
+# 文書一覧取得
+GET /api/documents/list
+
+# 文書削除
+DELETE /api/documents/{document_name}
+
+# 文書検索
+POST /api/documents/search
+Content-Type: application/json
+{"query": "検索クエリ", "n_results": 5}
+```
 
 ### ヘルスチェック
 
@@ -131,30 +189,32 @@ GET /health
 }
 ```
 
-## プロジェクト構造
+## 📁 プロジェクト構造
 
 ```
 azure-ai-by-claude/
 ├── backend/
-│   ├── main.py              # FastAPIアプリケーション
+│   ├── main.py                    # FastAPIアプリケーション
 │   ├── routes/
-│   │   └── chat.py         # チャットエンドポイント
-│   ├── services/
-│   │   ├── openai_service.py    # Azure OpenAI連携
-│   │   └── session_service.py   # セッション管理
-│   ├── models/             # データモデル（将来実装）
-│   └── utils/              # ユーティリティ（将来実装）
+│   │   ├── chat.py               # チャットエンドポイント（RAG統合）
+│   │   └── documents.py          # 文書管理API
+│   └── services/
+│       ├── openai_service.py     # Azure OpenAI連携（コンテキスト注入対応）
+│       ├── session_service.py    # セッション管理
+│       ├── vector_db_service.py  # ベクトル検索エンジン
+│       └── document_service.py   # 文書処理（PDF/TXT）
 ├── frontend/
 │   ├── templates/
-│   │   └── index.html      # メインページ
+│   │   └── index.html            # メインページ（RAG UI含む）
 │   └── static/
 │       └── css/
-│           └── style.css   # スタイルシート
-├── tests/                  # テスト（将来実装）
-├── .env.example           # 環境変数テンプレート
-├── requirements.txt       # Python依存関係
-├── CLAUDE.md             # 開発ガイド
-└── README.md             # このファイル
+│           └── style.css         # スタイルシート（モーダル含む）
+├── vector_db_data/               # ベクトルDB保存ディレクトリ
+│   └── documents.json           # 文書メタデータと埋め込み
+├── .env.example                 # 環境変数テンプレート
+├── requirements.txt             # Python依存関係（軽量）
+├── CLAUDE.md                   # 開発ガイド
+└── README.md                   # このファイル
 ```
 
 ## 開発
@@ -186,13 +246,26 @@ pytest
 3. デプロイメントセンターからGitHubリポジトリを接続
 4. 自動デプロイを設定
 
-## トラブルシューティング
+## 🔧 トラブルシューティング
 
 ### Azure OpenAI API エラー
 
 - APIキーが正しく設定されているか確認してください
 - エンドポイントURLが正しい形式か確認してください
 - デプロイメント名がAzure上の実際のデプロイメント名と一致しているか確認してください
+- **RAG機能**: `AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`が設定され、Embeddingsデプロイメントが存在するか確認
+
+### ファイルアップロードエラー
+
+- ファイルサイズが10MB以下であることを確認してください
+- 対応形式（PDF、TXT、MD）であることを確認してください
+- ブラウザのJavaScriptが有効になっているか確認してください
+
+### RAG検索エラー
+
+- 文書がアップロード済みであることを確認してください
+- `vector_db_data/documents.json`ファイルが存在し、読み取り可能であることを確認
+- Azure OpenAI Embeddingsの利用制限に達していないか確認
 
 ### セッションエラー
 
@@ -207,6 +280,26 @@ pytest
   ```powershell
   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
   ```
+
+## 🎯 RAG機能の特徴
+
+### 軽量実装
+- **外部依存なし**: ChromaDB、LangChain不要
+- **純粋Python**: 標準ライブラリ + numpy + pypdf のみ
+- **高速インストール**: コンパイル不要
+- **クロスプラットフォーム**: Windows/Linux/macOS対応
+
+### 高性能検索
+- **Azure OpenAI Embeddings**: 高品質な意味的検索
+- **コサイン類似度**: 正確な関連度計算
+- **チャンク分割**: 効率的な文書処理（1000文字/200文字オーバーラップ）
+- **JSON保存**: 永続化とポータビリティ
+
+### 企業利用対応
+- **データローカル**: 文書データはローカル保存
+- **セキュリティ**: 一時ファイル自動削除
+- **スケーラブル**: 文書数に応じた線形スケーリング
+- **メンテナンス性**: シンプルなアーキテクチャ
 
 ## ライセンス
 

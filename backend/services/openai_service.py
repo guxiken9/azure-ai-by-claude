@@ -38,7 +38,8 @@ class AzureOpenAIService:
         messages: List[Dict[str, str]],
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        stream: bool = False
+        stream: bool = False,
+        context: Optional[str] = None
     ) -> str:
         """
         チャットメッセージに対するAIの応答を取得
@@ -48,6 +49,7 @@ class AzureOpenAIService:
             temperature: 応答の創造性（0.0-2.0）
             max_tokens: 最大トークン数
             stream: ストリーミング応答を使用するか
+            context: RAGから取得したコンテキスト情報
             
         Returns:
             AIの応答テキスト
@@ -59,9 +61,21 @@ class AzureOpenAIService:
             
             # システムメッセージを確認・追加
             if not messages or messages[0].get("role") != "system":
+                if context:
+                    # RAGコンテキストがある場合は、それを含めたシステムメッセージを作成
+                    system_content = f"""あなたは親切で有能なAIアシスタントです。日本語で丁寧に応答してください。
+
+以下の参考情報を活用して回答してください。ただし、参考情報に関連する内容がない場合は、あなたの知識で回答してください。
+
+【参考情報】
+{context}
+"""
+                else:
+                    system_content = "あなたは親切で有能なAIアシスタントです。日本語で丁寧に応答してください。"
+                
                 system_message = {
                     "role": "system",
-                    "content": "あなたは親切で有能なAIアシスタントです。日本語で丁寧に応答してください。"
+                    "content": system_content
                 }
                 messages = [system_message] + messages
             
@@ -90,7 +104,8 @@ class AzureOpenAIService:
         self,
         messages: List[Dict[str, str]],
         temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        context: Optional[str] = None
     ):
         """
         ストリーミング形式でAIの応答を取得
@@ -102,9 +117,14 @@ class AzureOpenAIService:
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            stream=True
+            stream=True,
+            context=context
         )
         
         for chunk in stream:
             if chunk.choices[0].delta.content is not None:
                 yield chunk.choices[0].delta.content
+
+
+# シングルトンインスタンス
+openai_service = AzureOpenAIService()

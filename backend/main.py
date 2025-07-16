@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 
 from routes.chat import router as chat_router
+from routes.documents import router as documents_router
 
 # 環境変数の読み込み
 load_dotenv()
@@ -47,6 +48,7 @@ templates = Jinja2Templates(directory=str(template_dir))
 
 # ルーターの登録
 app.include_router(chat_router)
+app.include_router(documents_router, prefix="/api/documents")
 
 # ルートエンドポイント
 @app.get("/", response_class=HTMLResponse)

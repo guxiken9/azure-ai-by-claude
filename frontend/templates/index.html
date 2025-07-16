@@ -18,7 +18,15 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-robot"></i> Azure AI チャットツール</h1>
-            <p class="subtitle">AIアシスタントと対話しましょう</p>
+            <p class="subtitle">AIアシスタントと対話しましょう（RAG機能付き）</p>
+            <div class="header-controls">
+                <button type="button" id="upload-button" class="btn secondary">
+                    <i class="fas fa-upload"></i> 文書アップロード
+                </button>
+                <button type="button" id="documents-button" class="btn secondary">
+                    <i class="fas fa-folder-open"></i> 文書管理
+                </button>
+            </div>
         </header>
         
         <main>
@@ -69,14 +77,55 @@
                 </div>
                 <div class="feature">
                     <i class="fas fa-file-alt"></i>
-                    <span>ドキュメント問い合わせ</span>
+                    <span>文書ベース回答</span>
                 </div>
                 <div class="feature">
-                    <i class="fas fa-compress-alt"></i>
-                    <span>要約補助</span>
+                    <i class="fas fa-search"></i>
+                    <span>類似度検索</span>
                 </div>
             </div>
         </main>
+    </div>
+    
+    <!-- ファイルアップロードモーダル -->
+    <div id="upload-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> 文書アップロード</h3>
+                <button type="button" class="close-modal" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="file-upload-area">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>ファイルをドラッグ&ドロップまたはクリックして選択</p>
+                        <input type="file" id="file-input" name="file" accept=".pdf,.txt,.md" hidden>
+                        <small>対応形式: PDF, TXT, MD (最大10MB)</small>
+                    </div>
+                    <div id="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <p id="upload-status">アップロード中...</p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 文書管理モーダル -->
+    <div id="documents-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-folder-open"></i> 文書管理</h3>
+                <button type="button" class="close-modal" onclick="closeDocumentsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="documents-list">
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -159,6 +208,164 @@
         
         // 初期フォーカス
         document.getElementById('message-input').focus();
+        
+        // ======= RAG機能のJavaScript =======
+        
+        // ファイルアップロードモーダル関連
+        function openUploadModal() {
+            document.getElementById('upload-modal').style.display = 'flex';
+        }
+        
+        function closeUploadModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+            document.getElementById('upload-form').reset();
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+        
+        // 文書管理モーダル関連
+        function openDocumentsModal() {
+            document.getElementById('documents-modal').style.display = 'flex';
+            loadDocuments();
+        }
+        
+        function closeDocumentsModal() {
+            document.getElementById('documents-modal').style.display = 'none';
+        }
+        
+        // ボタンイベントリスナー
+        document.getElementById('upload-button').addEventListener('click', openUploadModal);
+        document.getElementById('documents-button').addEventListener('click', openDocumentsModal);
+        
+        // ファイルアップロード機能
+        const fileUploadArea = document.querySelector('.file-upload-area');
+        const fileInput = document.getElementById('file-input');
+        
+        fileUploadArea.addEventListener('click', () => fileInput.click());
+        
+        // ドラッグ&ドロップ機能
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.add('drag-over');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.classList.remove('drag-over');
+        });
+        
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                uploadFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                uploadFile(e.target.files[0]);
+            }
+        });
+        
+        // ファイルアップロード処理
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const progressDiv = document.getElementById('upload-progress');
+            const statusP = document.getElementById('upload-status');
+            const progressFill = document.querySelector('.progress-fill');
+            
+            progressDiv.style.display = 'block';
+            statusP.textContent = 'アップロード中...';
+            progressFill.style.width = '0%';
+            
+            try {
+                const response = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    progressFill.style.width = '100%';
+                    statusP.textContent = `✅ ${result.message}`;
+                    statusP.style.color = 'green';
+                    
+                    setTimeout(() => {
+                        closeUploadModal();
+                    }, 2000);
+                } else {
+                    statusP.textContent = `❌ エラー: ${result.detail}`;
+                    statusP.style.color = 'red';
+                }
+            } catch (error) {
+                statusP.textContent = `❌ アップロードエラー: ${error.message}`;
+                statusP.style.color = 'red';
+            }
+        }
+        
+        // 文書一覧読み込み
+        async function loadDocuments() {
+            const documentsList = document.getElementById('documents-list');
+            documentsList.innerHTML = '<div class="loading">読み込み中...</div>';
+            
+            try {
+                const response = await fetch('/api/documents/list');
+                const result = await response.json();
+                
+                if (response.ok && result.documents.length > 0) {
+                    documentsList.innerHTML = result.documents.map(doc => `
+                        <div class="document-item">
+                            <div class="document-info">
+                                <h4><i class="fas fa-file-alt"></i> ${doc.source}</h4>
+                                <p>チャンク数: ${doc.chunks} | 作成日時: ${new Date(doc.created_at).toLocaleString('ja-JP')}</p>
+                            </div>
+                            <button class="delete-btn" onclick="deleteDocument('${doc.source}')">
+                                <i class="fas fa-trash"></i> 削除
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    documentsList.innerHTML = '<div class="no-documents">アップロードされた文書がありません</div>';
+                }
+            } catch (error) {
+                documentsList.innerHTML = `<div class="error">エラー: ${error.message}</div>`;
+            }
+        }
+        
+        // 文書削除
+        async function deleteDocument(documentName) {
+            if (!confirm(`文書「${documentName}」を削除しますか？`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/documents/${encodeURIComponent(documentName)}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message);
+                    loadDocuments(); // 一覧を再読み込み
+                } else {
+                    alert(`エラー: ${result.detail}`);
+                }
+            } catch (error) {
+                alert(`削除エラー: ${error.message}`);
+            }
+        }
+        
+        // モーダル外クリックで閉じる
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>

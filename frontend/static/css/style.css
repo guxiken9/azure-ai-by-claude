@@ -317,3 +317,259 @@ main {
 #chat-messages::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+/* ======= RAG機能のスタイル ======= */
+
+/* ヘッダーコントロール */
+.header-controls {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+
+.btn.secondary {
+    background-color: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.btn.secondary:hover {
+    background-color: #e0e0e0;
+    border-color: #0078d4;
+}
+
+/* ソース表示 */
+.message-sources {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.message-sources small {
+    color: #666;
+    font-style: italic;
+}
+
+/* モーダル */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 0;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+    border-radius: 10px 10px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-modal:hover {
+    color: #333;
+    background-color: #f0f0f0;
+    border-radius: 50%;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+/* ファイルアップロード */
+.file-upload-area {
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background-color: #fafafa;
+}
+
+.file-upload-area:hover {
+    border-color: #0078d4;
+    background-color: #f0f8ff;
+}
+
+.file-upload-area.drag-over {
+    border-color: #0078d4;
+    background-color: #e3f2fd;
+}
+
+.file-upload-area i {
+    font-size: 48px;
+    color: #0078d4;
+    margin-bottom: 15px;
+}
+
+.file-upload-area p {
+    margin: 15px 0;
+    font-size: 16px;
+    color: #333;
+}
+
+.file-upload-area small {
+    color: #666;
+    font-size: 14px;
+}
+
+/* アップロード進捗 */
+#upload-progress {
+    margin-top: 20px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #0078d4;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+#upload-status {
+    text-align: center;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* 文書一覧 */
+.document-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background-color: #fafafa;
+}
+
+.document-info h4 {
+    margin: 0 0 5px 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.document-info p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.delete-btn {
+    background-color: #d83b01;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s;
+}
+
+.delete-btn:hover {
+    background-color: #c13200;
+}
+
+.loading, .no-documents, .error {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.error {
+    color: #d83b01;
+}
+
+/* レスポンシブ：RAG機能 */
+@media (max-width: 768px) {
+    .header-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .document-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .delete-btn {
+        align-self: flex-end;
+    }
+}
